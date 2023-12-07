@@ -1,6 +1,6 @@
 package days
 
-import helpers.numbersRegex
+import numbersRegex
 import readLines
 
 object Day4 {
