@@ -64,14 +64,14 @@ object Day8 {
     private fun findNearestZ(
         sp: String,
         ins: String,
-        mappedMap: Map<String, Instructions>,
+        map: Map<String, Instructions>,
         endCondition: (String) -> Boolean
     ): Long {
         var idx = 0L
         var currentStep = sp
         while (true) {
             val instr = ins[(idx % ins.length).toInt()]
-            val value = mappedMap[currentStep]!!
+            val value = map[currentStep]!!
 
             currentStep = when (instr) {
                 'L' -> value.left

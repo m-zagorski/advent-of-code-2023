@@ -50,9 +50,7 @@ object Day7 {
         println(result)
     }
 
-    private val cardsWithoutJokers = listOf(
-        "A", "K", "Q", "T", "9", "8", "7", "6", "5", "4", "3", "2"
-    )
+    private const val cardsWithoutJokers = "AKQT98765432"
 
     private val winning = mapOf(
         listOf(5) to 7,
@@ -114,7 +112,7 @@ object Day7 {
 
         return cardsWithoutJokers.maxOf {
             val range = firstJoker.range.first
-            val replaced = hand.replaceRange(range, range + 1, it)
+            val replaced = hand.replaceRange(range, range + 1, it.toString())
             generatePermutations(replaced, jokers.minus(firstJoker), winning)
         }
     }
