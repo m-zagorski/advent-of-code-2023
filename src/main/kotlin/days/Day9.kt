@@ -41,8 +41,8 @@ object Day9 {
     private tailrec fun List<Int>.createValue(lastIndex: Int = 0): Int {
         if (all { it == 0 }) return lastIndex
 
-        return windowed(2, 1).map { (first, second) -> second - first }.createValue(
-            lastIndex = lastIndex + last()
-        )
+        return windowed(2, 1)
+            .map { (first, second) -> second - first }
+            .createValue(lastIndex = lastIndex + last())
     }
 }
