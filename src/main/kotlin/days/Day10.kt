@@ -1,5 +1,6 @@
 package days
 
+import Point
 import readLines
 import kotlin.math.ceil
 
@@ -36,10 +37,10 @@ object Day10 {
     }
 
     sealed class Position {
-        abstract fun nextDirection(comingFrom: Direction): Direction?
+        abstract fun nextDirection(comingFrom: Direction): Direction
 
         data object SouthEast : Position() {
-            override fun nextDirection(comingFrom: Direction): Direction? {
+            override fun nextDirection(comingFrom: Direction): Direction {
                 return when (comingFrom) {
                     Direction.South, Direction.North -> Direction.East
                     Direction.East, Direction.West -> Direction.South
@@ -48,7 +49,7 @@ object Day10 {
         }
 
         data object SouthWest : Position() {
-            override fun nextDirection(comingFrom: Direction): Direction? {
+            override fun nextDirection(comingFrom: Direction): Direction {
                 return when (comingFrom) {
                     Direction.South, Direction.North -> Direction.West
                     Direction.West, Direction.East -> Direction.South
@@ -57,17 +58,16 @@ object Day10 {
         }
 
         data object NorthEast : Position() {
-            override fun nextDirection(comingFrom: Direction): Direction? {
+            override fun nextDirection(comingFrom: Direction): Direction {
                 return when (comingFrom) {
                     Direction.North, Direction.South -> Direction.East
                     Direction.East, Direction.West -> Direction.North
-                    else -> null
                 }
             }
         }
 
         data object NorthWest : Position() {
-            override fun nextDirection(comingFrom: Direction): Direction? {
+            override fun nextDirection(comingFrom: Direction): Direction {
                 return when (comingFrom) {
                     Direction.North, Direction.South -> Direction.West
                     Direction.West, Direction.East -> Direction.North
@@ -76,27 +76,25 @@ object Day10 {
         }
 
         data object EastWest : Position() {
-            override fun nextDirection(comingFrom: Direction): Direction? {
+            override fun nextDirection(comingFrom: Direction): Direction {
                 return when (comingFrom) {
                     Direction.East -> Direction.East
                     Direction.West -> Direction.West
-                    else -> null
+                    else -> error("Wrong direction $this $comingFrom")
                 }
             }
         }
 
         data object NorthSouth : Position() {
-            override fun nextDirection(comingFrom: Direction): Direction? {
+            override fun nextDirection(comingFrom: Direction): Direction {
                 return when (comingFrom) {
                     Direction.North -> Direction.North
                     Direction.South -> Direction.South
-                    else -> null
+                    else -> error("Wrong direction $this $comingFrom")
                 }
             }
         }
     }
-
-    data class Point(val x: Int, val y: Int)
 
     private val instructionToPositionMap = mapOf(
         'F' to Position.SouthEast,
@@ -221,7 +219,6 @@ object Day10 {
     ): PolygonCoordinatesWithInstructions {
         if (x < 0 || y < 0 || x > input.first().length - 1 || y > input.size - 1) return PolygonCoordinatesWithInstructions.EMPTY
 
-
         val currentPipe = input[y][x]
         if (currentPipe == 'S') {
             return coordinates
@@ -256,7 +253,6 @@ object Day10 {
         var j = polygonCoordinates.size - 1
         val intersectionCount = polygonCoordinates.mapIndexed { i, currentPoint ->
             val previousPoint = polygonCoordinates[j]
-            
             val intersect = (currentPoint.y > point.y) != (previousPoint.y > point.y) &&
                     point.x < (previousPoint.x - currentPoint.x) * (point.y - currentPoint.y) / (previousPoint.y - currentPoint.y) + currentPoint.x
             j = i

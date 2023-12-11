@@ -11,3 +11,5 @@ fun readWholeFile(dayNumber: String): String {
 }
 
 val numbersRegex = "\\d+".toRegex()
+
+data class Point(val x: Int, val y: Int)
