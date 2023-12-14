@@ -29,13 +29,25 @@ object Day12 {
 
 
     private fun part2(input: List<String>) {
-        println("I will get back to you ;)")
+        val result = input.sumOf { line ->
+            val (damaged, groups) = line.split(" ")
+            val intGroups = groups.split(',').map { it.toInt() }
+            val result = replaceQuestionMarks(damaged, setOf(damaged.replace("?", ".")))
+            val withLength = result.count { combination ->
+                val sizes = "[#]+".toRegex().findAll(combination).map { it.value.length }.toList()
+                sizes == intGroups
+            }
+            withLength
+        }
+        println(result)
     }
 
-    private fun replaceQuestionMarks(input: String, currentCombinations: Set<String>): Set<String> {
+    private fun replaceQuestionMarks(
+        input: String,
+        currentCombinations: Set<String>
+    ): Set<String> {
         val qm = "[?]".toRegex().findAll(input).toList()
         if (qm.isEmpty()) return currentCombinations
-
 
         val allSets = qm.map { result ->
             val part1 = input.substring(0, result.range.first).replace("?", ".")
