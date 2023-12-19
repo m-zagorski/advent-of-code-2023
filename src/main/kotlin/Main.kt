@@ -1,4 +1,4 @@
-import days.Day19
+import days.*
 
 fun main(args: Array<String>) {
     Day19()

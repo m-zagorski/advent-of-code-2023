@@ -1,6 +1,5 @@
 package days
 
-import numbersRegex
 import readWholeFile
 import kotlin.math.max
 import kotlin.math.min
@@ -17,187 +16,130 @@ object Day19 {
     }
 
     private fun part1(input: String) {
-        var startWorkflow: List<Instruction> = emptyList()
-        val allWorkflows: MutableMap<String, List<Instruction>> = mutableMapOf()
         val (workflows, ratings) = input.split("\n\n")
 
-        workflows.split("\n").forEach { workflow ->
-            val sIdx = workflow.indexOfFirst { it == '{' }
-            val name = workflow.substring(0, sIdx)
-            val others = workflow.substring(sIdx + 1, workflow.length - 1)
-
-            val instr: List<Instruction> = others.split(",").map {
-                if (it.contains(":")) {
-                    val rating = it.first().toString()
-                    val condition = it[1].toString()
-                    val number = numbersRegex.findAll(it).first().value.toLong()
-                    val nextInstruction = ":(.*)".toRegex().findAll(it).first().value.drop(1)
-                    Instruction.Condition(rating, condition, number, nextInstruction)
-                } else {
-                    Instruction.Raw(it)
-                }
-            }
-
-            if (name == "in") {
-                startWorkflow = instr
-            } else {
-                allWorkflows[name] = instr
-            }
+        val allWorkflows = workflows.split("\n").associate { workflow ->
+            val (name, instruction) = "(\\w+)\\{(\\S+)}".toRegex().find(workflow)?.groupValues.orEmpty().drop(1)
+            val instr = instruction.split(",").map(InstructionTest::createFromInput)
+            name to instr
         }
 
         val mappedRatings: List<Map<String, Long>> = ratings.split("\n").map { rating ->
             rating.drop(1).dropLast(1).split(",").associate {
-                val name = it.first().toString()
-                val number = numbersRegex.findAll(it).first().value.toLong()
-                name to number
+                val (name, number) = "([a-z])=(\\d+)".toRegex().find(it)?.groupValues.orEmpty().drop(1)
+                name to number.toLong()
             }
         }
 
-        var currentInstructions: List<Instruction> = startWorkflow
-        val final = mutableListOf<Map<String, Long>>()
+        var sum = 0L
         mappedRatings.forEach { rating ->
+            var currentInstructions = allWorkflows.getValue("in")
             while (true) {
                 val result = travelInstructions(rating, currentInstructions)
                 if (result == "A") {
-                    final.add(rating)
+                    sum += rating.values.sum()
                     break
                 }
-                if (result == "R") {
-                    break
-                }
-                currentInstructions = allWorkflows[result]!!
+                if (result == "R") break
+                currentInstructions = allWorkflows.getValue(result)
             }
-            currentInstructions = startWorkflow
         }
 
-        val result = final.sumOf {
-            it.values.sum()
-        }
-
-        print(result)
+        print(sum)
     }
 
-    private fun travelInstructions(rating: Map<String, Long>, instructions: List<Instruction>): String {
+    private fun travelInstructions(rating: Map<String, Long>, instructions: List<InstructionTest>): String {
         for (instr in instructions) {
-            val result = when (instr) {
-                is Instruction.Raw -> instr.instr
-                is Instruction.Condition -> {
-                    val number = rating[instr.rating]!!
-                    instr.shouldJump(number)
-                }
-            }
-            if (result != null) {
-                return result
+            instr.jump(rating)?.let {
+                return it
             }
         }
         error("Wrong state")
     }
 
     private fun part2(input: String) {
-        var startWorkflow: List<Instruction> = emptyList()
-        val allWorkflows: MutableMap<String, List<Instruction>> = mutableMapOf()
         val (workflows, _) = input.split("\n\n")
 
-        workflows.split("\n").forEach { workflow ->
-            val sIdx = workflow.indexOfFirst { it == '{' }
-            val name = workflow.substring(0, sIdx)
-            val others = workflow.substring(sIdx + 1, workflow.length - 1)
-
-            val instr: List<Instruction> = others.split(",").map {
-                if (it.contains(":")) {
-                    val rating = it.first().toString()
-                    val condition = it[1].toString()
-                    val number = numbersRegex.findAll(it).first().value.toLong()
-                    val nextInstruction = ":(.*)".toRegex().findAll(it).first().value.drop(1)
-                    Instruction.Condition(rating, condition, number, nextInstruction)
-                } else {
-                    Instruction.Raw(it)
-                }
-            }
-
-            if (name == "in") {
-                startWorkflow = instr
-            } else {
-                allWorkflows[name] = instr
-            }
+        val allWorkflows = workflows.split("\n").associate { workflow ->
+            val (name, instruction) = "(\\w+)\\{(\\S+)}".toRegex().find(workflow)?.groupValues.orEmpty().drop(1)
+            val instr = instruction.split(",").map(InstructionTest::createFromInput)
+            name to instr
         }
 
-        val paths = startWorkflow.flatMapIndexed { index, instruction ->
-            val prev: List<Instruction> = startWorkflow.take(index).map { it.opposite() }
+        val startWorkflow = allWorkflows.getValue("in")
+        val paths: List<List<InstructionTest>> = startWorkflow.flatMapIndexed { index, instruction ->
+            val prev = startWorkflow.take(index).map { it.opposite() }
             findAcceptedPaths(instruction, allWorkflows, prev)
         }
 
         val result = paths.sumOf { path ->
-            var numbers = Numbers()
-            path.filterIsInstance<Instruction.Condition>().forEach { instruction ->
-                numbers = numbers.modify(
-                    rating = instruction.rating,
-                    condition = instruction.condition,
-                    value = instruction.number
-                )
-            }
-            numbers.calculateProbabilities()
+            path.filter { it.operation != null }
+                .fold(Numbers()) { acc, instruction ->
+                    instruction.operation?.let { acc.modify(it) } ?: error("Wrong state")
+                }.calculateProbabilities()
         }
 
         println(result)
     }
 
-    sealed class Instruction {
-        abstract fun opposite(): Instruction
-        abstract fun nextInstr(): String
+    data class Operation(val rating: String, val condition: String, val number: Long) {
+        fun opposite(): Operation {
+            return copy(condition = condition.opposite())
+        }
 
-        fun isAccepted(): Boolean {
+        private fun String.opposite(): String {
             return when (this) {
-                is Raw -> instr == "A"
-                is Condition -> nextInstruction == "A"
+                "<" -> ">="
+                ">" -> "<="
+                else -> error("Wrong")
+            }
+        }
+    }
+
+    private val operationRegex = "^([a-z])([<>])(\\d+):([A-Za-z]+)\$".toRegex()
+
+    data class InstructionTest(val operation: Operation?, val nextInstruction: String) {
+        fun jump(rating: Map<String, Long>): String? {
+            if (operation == null) return nextInstruction
+
+            val number = rating.getValue(operation.rating)
+
+            return when (operation.condition) {
+                "<" -> if (number < operation.number) nextInstruction else null
+                ">" -> if (number > operation.number) nextInstruction else null
+                else -> error("Unknown")
             }
         }
 
-        fun isRejected(): Boolean {
-            return when (this) {
-                is Raw -> instr == "R"
-                is Condition -> nextInstruction == "R"
-            }
+        fun isAccepted(): Boolean = nextInstruction == "A"
+
+        fun isRejected(): Boolean = nextInstruction == "R"
+
+        fun opposite(): InstructionTest {
+            return copy(operation = operation?.opposite())
         }
 
-        data class Raw(val instr: String) : Instruction() {
-            override fun opposite(): Instruction = this
-            override fun nextInstr(): String = instr
-        }
-
-        data class Condition(val rating: String, val condition: String, val number: Long, val nextInstruction: String) :
-            Instruction() {
-            fun shouldJump(n: Long): String? {
-                return when (condition) {
-                    "<" -> if (n < number) nextInstruction else null
-                    ">" -> if (n > number) nextInstruction else null
-                    else -> error("Unknown")
-                }
-            }
-
-            override fun opposite(): Condition = copy(condition = condition.opposite())
-
-            override fun nextInstr(): String = nextInstruction
-
-            private fun String.opposite(): String {
-                return when (this) {
-                    "<" -> ">="
-                    ">" -> "<="
-                    else -> error("Wrong")
+        companion object {
+            fun createFromInput(input: String): InstructionTest {
+                return if (input.contains(":")) {
+                    val (rating, condition, number, nextInstruction) = operationRegex.find(input)?.groupValues.orEmpty().drop(1)
+                    InstructionTest(Operation(rating, condition, number.toLong()), nextInstruction)
+                } else {
+                    InstructionTest(null, input)
                 }
             }
         }
     }
 
     private fun findAcceptedPaths(
-        instruction: Instruction,
-        workflows: Map<String, List<Instruction>>,
-        result: List<Instruction>
-    ): List<List<Instruction>> {
+        instruction: InstructionTest,
+        workflows: Map<String, List<InstructionTest>>,
+        result: List<InstructionTest>
+    ): List<List<InstructionTest>> {
         if (instruction.isAccepted()) return listOf(result.plus(instruction))
         if (instruction.isRejected()) return emptyList()
 
-        val nextInstructions = workflows[instruction.nextInstr()]!!
+        val nextInstructions = workflows.getValue(instruction.nextInstruction)
 
         return nextInstructions.flatMapIndexed { index, ii ->
             val prev = nextInstructions.take(index).map { it.opposite() }
@@ -211,13 +153,13 @@ object Day19 {
         val a: LongRange = 1L..4000L,
         val s: LongRange = 1L..4000L
     ) {
-        fun modify(rating: String, condition: String, value: Long): Numbers {
-            return when (rating) {
-                "x" -> copy(x = x.update(condition, value))
-                "m" -> copy(m = m.update(condition, value))
-                "a" -> copy(a = a.update(condition, value))
-                "s" -> copy(s = s.update(condition, value))
-                else -> error("Wrong $rating")
+        fun modify(op: Operation): Numbers {
+            return when (op.rating) {
+                "x" -> copy(x = x.update(op.condition, op.number))
+                "m" -> copy(m = m.update(op.condition, op.number))
+                "a" -> copy(a = a.update(op.condition, op.number))
+                "s" -> copy(s = s.update(op.condition, op.number))
+                else -> error("Wrong ${op.rating}")
             }
         }
 
