@@ -6,6 +6,7 @@ build/
 
 **/src/main/kotlin/garbage
 **/src/main/kotlin/helpers
+**/src/input/day**.txt
 
 ### IntelliJ IDEA ###
 .idea/modules.xml
