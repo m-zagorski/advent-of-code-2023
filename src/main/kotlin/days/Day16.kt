@@ -87,17 +87,6 @@ object Day16 {
         }
     }
 
-    private fun Point.applyOffset(offset: Point): Point {
-        return Point(
-            x = this.x + offset.x,
-            y = this.y + offset.y
-        )
-    }
-
-    private fun Point.inBoard(array: Array<Array<Char>>): Boolean {
-        return x >= 0 && x <= array.first().size - 1 && y >= 0 && y <= array.size - 1
-    }
-
     sealed class Direction {
         abstract val offset: Point
         abstract fun nextDirections(mirror: Char): List<Direction>
